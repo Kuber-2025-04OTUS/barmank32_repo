@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: homework
+  labels:
+    app: homework-intro
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.28.0-alpine
+      ports:
+        - containerPort: 8000
+      volumeMounts:
+        - name: workdir
+          mountPath: "/homework"
+        - name: config-file
+          mountPath: /etc/nginx/conf.d/server.conf
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - rm
+              - -f
+              - /homework/index.html
+  initContainers:
+    - name: init-container
+      image: busybox:1.37
+      command:
+        - wget
+        - "-O"
+        - "/init/index.html"
+        - http://info.cern.ch
+      volumeMounts:
+        - name: workdir
+          mountPath: "/init"
+    - name: config-container
+      image: busybox:1.37
+      command:
+        - sh
+        - -c
+        - |
+          cat > /tmp/server.conf <<EOF
+            server {
+            listen       8000;
+            listen  [::]:8000;
+            server_name  _;
+            # access_log  /var/log/nginx/server.access.log  main;
+            location / {
+                root   /homework;
+                index  index.html index.htm;
+              }
+            }
+          EOF
+      volumeMounts:
+        - name: config-file
+          mountPath: /tmp/server.conf
+  volumes:
+    - name: workdir
+      emptyDir:
+        sizeLimit: 50Mi
+        medium: Memory
+    - name: config-file
+      hostPath:
+        path: /tmp/server.conf
+        type: FileOrCreate
