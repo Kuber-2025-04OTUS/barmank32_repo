@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-deployment
+  namespace: homework
+  labels:
+    app: kubernetes-controllers
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.28.0-alpine
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /homework/index.html
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: workdir
+              mountPath: "/homework"
+            - name: config-file
+              mountPath: /etc/nginx/conf.d/server.conf
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - rm
+                  - -f
+                  - /homework/index.html
+      initContainers:
+        - name: init-container
+          image: busybox:1.37
+          command:
+            - wget
+            - "-O"
+            - "/init/index.html"
+            - http://info.cern.ch
+          volumeMounts:
+            - name: workdir
+              mountPath: "/init"
+        - name: config-container
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              cat > /tmp/server.conf <<EOF
+                server {
+                listen       8000;
+                listen  [::]:8000;
+                server_name  _;
+                # access_log  /var/log/nginx/server.access.log  main;
+                location / {
+                    root   /homework;
+                    index  index.html index.htm;
+                  }
+                }
+              EOF
+          volumeMounts:
+            - name: config-file
+              mountPath: /tmp/server.conf
+      volumes:
+        - name: workdir
+          emptyDir:
+            sizeLimit: 50Mi
+            medium: Memory
+        - name: config-file
+          hostPath:
+            path: /tmp/server.conf
+            type: FileOrCreate
+      nodeSelector:
+        homework: "true"
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
