@@ -4,6 +4,7 @@ metadata:
   name: kubernetes-pvc
   namespace: homework
 spec:
+  storageClassName: kubernetes-sc
   accessModes:
     - ReadWriteOnce
   volumeMode: Filesystem
