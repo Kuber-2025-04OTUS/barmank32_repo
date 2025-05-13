@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-configmap
+  namespace: homework
+data:
+  player_initial_lives: "3"
+  ui_properties_file_name: "user-interface.properties"
+  file: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
